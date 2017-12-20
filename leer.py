@@ -24,10 +24,12 @@ def total_arch(folder,k):
     for f in listdir(folder):   
         if f[2:11]==k:
             n=n+1
-
     return n
 
-
+def borrarseg_arch(folder):
+    for f in listdir(folder):   
+            os.remove(f) 
+        
 
 def borraraux():
     if(os.path.exists("a.jpg")):

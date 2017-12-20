@@ -6,6 +6,8 @@ import  sqlite3
 from PIL import Image,ImageChops
 import time
 import os.path 
+import argparse
+from os import listdir
 
 
 
@@ -129,7 +131,6 @@ def thinning():
 
 def segmentacion(imagen,separador,nsegmentos,lseg,mintotpix):
     his=pixels_total_horizontal(imagen)
-    print(his)
     w, h = imagen.size
     letter=False
     foundletter=False
@@ -155,10 +156,8 @@ def segmentacion(imagen,separador,nsegmentos,lseg,mintotpix):
                 t=1
         if foundletter==True:
             im = imagen.crop((n1, 0, n2, h))
-            print(conteo_pixels_blanco(im))
             if conteo_pixels_blanco(im)>mintotpix:
                 u=u+1
-                print(u)
                 if u==nsegmentos:
                     im = imagen.crop((n1, 0, w, h))
                     im.save(str(nsegmentos)+".jpg")
@@ -181,7 +180,6 @@ def segmentacion(imagen,separador,nsegmentos,lseg,mintotpix):
 def segmentacion_thin(imagen1,imagen2,separador,nsegmentos,lseg):
     leer.borraraux2()
     his=pixels_total_horizontal(imagen2)
-    print(his)
     w, h = imagen2.size
     letter=False
     foundletter=False
@@ -267,7 +265,7 @@ def quitar_linea(imagen,L):
 
 def segmentar(minpix,nseg,Lminseg,k,mintotpix):
     leer.borraraux()
-    c=leer.total_arch("C:/Users/Antonio/Desktop/mef/segmentada",k)
+    c=leer.total_arch("C:/Users/Antonio/Desktop/CAPTCHAS/MEF_IA/segmentada",k)
     print(c)
     if c<5:
         for i in range(c):     
@@ -287,7 +285,7 @@ def segmentar(minpix,nseg,Lminseg,k,mintotpix):
     leer.borraraux()
 
 def segmentarforzado(k):
-    c=leer.total_arch("C:/Users/Antonio/Desktop/mef/segmentada",k)
+    c=leer.total_arch("C:/Users/Antonio/Desktop/CAPTCHAS/MEF_IA/segmentada",k)
     print(c)
     Lmax=0
     p=0
@@ -359,17 +357,17 @@ def segmentarthin(minpix,nseg,Lminseg,k):
 #################################################################################################################################################################
 #Entrenamiento del modelo
 try:
-	npaClassifications = np.loadtxt("classifications.txt", np.float32)                  # read in training classifications
+    npaClassifications = np.loadtxt("classifications.txt", np.float32)                  # read in training classifications
 except:
-	print ("error, unable to open classifications.txt, exiting program\n")
-	os.system("pause")
-	# end try
+    print ("error, unable to open classifications.txt, exiting program\n")
+    os.system("pause")
+    # end try
 
 try:
-	npaFlattenedImages = np.loadtxt("flattened_images.txt", np.float32)                 # read in training images
+    npaFlattenedImages = np.loadtxt("flattened_images.txt", np.float32)                 # read in training images
 except:
-	print ("error, unable to open flattened_images.txt, exiting program\n")
-	os.system("pause")
+    print ("error, unable to open flattened_images.txt, exiting program\n")
+    os.system("pause")
 
 
 print(npaClassifications.shape,npaFlattenedImages.shape)
@@ -385,208 +383,230 @@ c = conn.cursor()
 """
 # Create table solo si no estan creadas previamente
 c.execute('''CREATE TABLE EXPEDIENTE_ADMIN
-			 (Entidad INTEGER,  año text, expediente int, nom_entidad text, tipo_operacio text, nom_operacion text, tipo_mod_compra text, nom_mod_compra text, tipo_prc_selecc text, nom_prc_selecc)''')
+             (Entidad INTEGER,  año text, expediente int, nom_entidad text, tipo_operacio text, nom_operacion text, tipo_mod_compra text, nom_mod_compra text, tipo_prc_selecc text, nom_prc_selecc)''')
 c.execute('''CREATE TABLE DATOS_EXPEDIENTE
-			 (Entidad INTEGER,  año text, expediente int, num_registro int, ciclo char, fase char, sec int, corr int, doc INTEGER, numero text, fecha date, ff int, moneda text,  monto real, estado char, fecha_proceso datetime,  id_trx INTEGER )''')
+             (Entidad INTEGER,  año text, expediente int, num_registro int, ciclo char, fase char, sec int, corr int, doc INTEGER, numero text, fecha date, ff int, moneda text,  monto real, estado char, fecha_proceso datetime,  id_trx INTEGER )''')
 """
 driver= webdriver.Chrome()
 driver.get('http://apps2.mef.gob.pe/consulta-vfp-webapp/consultaExpediente.jspx')
+total_consultas=6
+for i in range(total_consultas):
+    k=str(i)+".jpg"
+    driver.save_screenshot('screenshot.png')
+    screenshot=Image.open('screenshot.png')
+    captcha= screenshot.crop((149,518,349,576))
+    captcha.save("img/"+k)  
+    leer.borraraux()
+    I = Image.open("img/"+k)
+    #convertir a gris
+    G = I.convert("L")
+    G.save("gris/"+k)
+    #binarizar imagen para que se vea solo la linea
+    LN=binarizacion(G, 40) 
+    LN.save("linea/"+k)
+    #binarizar imagen para quitar el color de fondo de la imagen
+    w, h = G.size
+    pix = G.load() 
+    output = Image.new("L", (w, h))
+    out_pix = output.load()
+    for i in range(w):
+        sum=0
+        for a in range(h):
+            sum=sum+pix[i,a]
+        p=sum/h
+        p=int(p)
+        for j in range(h):
+            if pix[i, j] >= p: out_pix[i, j] = 255
+            else: out_pix[i, j] = 0 
+    output.save("binarizada/"+k)
+     #quitar mancha
+    A=quitar_mancha(output)
+    A.save("sinmancha/"+k)
 
-for i in range(6):
-	k=str(i)+".jpg"
-	driver.save_screenshot('screenshot.png')
-	screenshot=Image.open('screenshot.png')
-	captcha= screenshot.crop((149,518,349,576))
-	captcha.save("img/"+k)	
-	leer.borraraux()
-	I = Image.open("img/"+k)
-	#convertir a gris
-	G = I.convert("L")
-	G.save("gris/"+k)
-	#binarizar imagen para que se vea solo la linea
-	LN=binarizacion(G, 40) 
-	LN.save("linea/"+k)
-	#binarizar imagen para quitar el color de fondo de la imagen
-	w, h = G.size
-	pix = G.load() 
-	output = Image.new("L", (w, h))
-	out_pix = output.load()
-	for i in range(w):
-		sum=0
-		for a in range(h):
-			sum=sum+pix[i,a]
-		p=sum/h
-		p=int(p)
-		for j in range(h):
-			if pix[i, j] >= p: out_pix[i, j] = 255
-			else: out_pix[i, j] = 0	
-	output.save("binarizada/"+k)
-	 #quitar mancha
-	A=quitar_mancha(output)
-	A.save("sinmancha/"+k)
-	#quitar linea
-	C=quitar_linea(A,LN)
-	C.save("sinlinea/"+k)
-	#invertir colores de la imagen
-	out = ImageChops.invert(C)
-	out.save("invertida/"+k)
-	#corte
-	Ct=corte(out,2,2)
-	Ct.save("cortada/"+k)
-	Ct.save("a.jpg")
-	dilation(2)
-	M=Image.open("a.jpg")
-	N=binarizacion(M, 90)
-	N.save("a.jpg")
-	thinning()
-	dilation(2)
-	N.close()
-	M.close()
-	P=Image.open("a.jpg")
-	Q=binarizacion(P, 90)
-	n=segmentacion_thin(Ct,Q,0,5,30)
-	P.close()    
-	print(n)
-	for i in range(n):
-		if os.path.exists(str(i+1)+".jpg"):
-			L=Image.open(str(i+1)+".jpg")
-			L.save("segmentada/"+str(i+1)+"."+str(k))
-			L.close()
-	n=0
-	m=0
-	for i in range(5):
-		if os.path.exists("segmentada/"+str(i+1)+"."+str(k)):
-			R=Image.open("segmentada/"+str(i+1)+"."+str(k))
-			w, h = R.size
-			R.close()  
-			if w>m:
-				m=w
-				c=i+1
-			n=n+1
-		else:
-			break
-	if n<5 and n>0:
-		print(m,n,c)        
-		for i in range(n):
-			leer.borraraux()
-			im1=Image.open("segmentada/"+str(i+1)+"."+str(k))
-			m=segmentacion(im1,0,6-n,27,90)
-			im1.close()
-			print(m,n,c)
-		if m>1:            
-			for r in range(c,i+1,-1):
-				print(r)
-				os.rename("segmentada/"+str(r)+"."+str(k), "segmentada/"+str(r+m-1)+"."+str(k))
-			os.remove("segmentada/"+str(i+1)+"."+str(k))
-			for s in range(m): 
-				os.rename(str(s+1)+".jpg", "segmentada/"+str(i+1+s)+"."+str(k))
-	segmentar(0,6-n,23,k,80)
-	segmentarthin(0,6-c,24,k)
-	segmentar(1,6-c,23,k,85)
-	segmentar(0,6-n,20,k,85)
-	segmentarthin(0,6-c,20,k)
-	segmentar(1,6-c,22,k,85)
-	segmentar(2,6-c,25,k,85)
-	segmentarthin(2,6-c,20,k)
-	segmentar(2,6-c,20,k,70)
-	segmentar(3,6-c,20,k,80)  
-	segmentarthin(3,6-c,20,k)
-	segmentarthin(4,6-c,20,k)  
-	segmentar(3,6-c,20,k,70)
-	segmentar(5,6-c,20,k,70)    
-	segmentar(6,6-c,20,k,70)
-	segmentarforzado(k)
-	finalstr=''
-	for n in leer.listdir_recurd([],"C:/Users/Antonio/Desktop/mef/segmentada/","C:/Users/Antonio/Desktop/mef/segmentada/",[]): 
-		test=Image.open("segmentada/"+str(n))
-		test.save("a.jpg")
-		ancho,alto=test.size
-		mitad_ancho=int(ancho/2.0)
-		mitad_alto=int(alto/2.0)
-		pix=test.load()
-		im2=Image.new("L",(52,52))
-		im2_pix = im2.load() 
-		for i in range(26-mitad_ancho,26+mitad_ancho):
-			for j in range(26-mitad_alto,26+mitad_alto):
-				if pix[i+mitad_ancho-26,j+mitad_alto-26]>180:
-					im2_pix[i,j]=255
-		im2.save("a.jpg")
-		im2.close()
-		imgTestNumbers = cv2.imread("a.jpg")
-		testflt= imgTestNumbers.reshape(1,np.prod(8112))   
-		testflt = np.float32(testflt)   
-		retval, npaResults, neigh_resp, dists = kNearest.findNearest(testflt, k = 1)
-		predicchar = str(chr(int(npaResults[0][0])))
-		finalstr= finalstr + predicchar
-		print(finalstr)
+    #quitar linea
+    C=quitar_linea(A,LN)
+    C.save("sinlinea/"+k)
+    #invertir colores de la imagen
+    out = ImageChops.invert(C)
+    out.save("invertida/"+k)
+    #corte
+    Ct=corte(out,7,7)
+    Ct.save("cortada/"+k)
+    Ct.save("a.jpg")
+    dilation(2)
+    M=Image.open("a.jpg")
+    N=binarizacion(M, 90)
+    N.save("a.jpg")
+    thinning()
+    dilation(2)
+    N.close()
+    M.close()
+    P=Image.open("a.jpg")
+    Q=binarizacion(P, 90)
+    n=segmentacion_thin(Ct,Q,0,5,30)
+    P.close()    
+    print(n)
+    for i in range(n):
+        if os.path.exists(str(i+1)+".jpg"):
+            L=Image.open(str(i+1)+".jpg")
+            L.save("segmentada/"+str(i+1)+"."+str(k))
+            L.close()
+    n=0
+    m=0
+    for i in range(5):
+        if os.path.exists("segmentada/"+str(i+1)+"."+str(k)):
+            R=Image.open("segmentada/"+str(i+1)+"."+str(k))
+            w, h = R.size
+            R.close()  
+            if w>m:
+                m=w
+                c=i+1
+            n=n+1
+        else:
+            break
+    if n<5 and n>0:
+        print(m,n,c)        
+        for i in range(n):
+            leer.borraraux()
+            im1=Image.open("segmentada/"+str(i+1)+"."+str(k))
+            m=segmentacion(im1,0,6-n,27,90)
+            im1.close()
+            print(m,n,c)
+        if m>1:            
+            for r in range(c,i+1,-1):
+                print(r)
+                os.rename("segmentada/"+str(r)+"."+str(k), "segmentada/"+str(r+m-1)+"."+str(k))
+            os.remove("segmentada/"+str(i+1)+"."+str(k))
+            for s in range(m): 
+                os.rename(str(s+1)+".jpg", "segmentada/"+str(i+1+s)+"."+str(k))
+    segmentar(0,6-n,23,k,80)
+    segmentarthin(0,6-c,24,k)
+    segmentar(1,6-c,23,k,85)
+    segmentar(0,6-n,20,k,85)
+    segmentarthin(0,6-c,20,k)
+    segmentar(1,6-c,22,k,85)
+    segmentar(2,6-c,25,k,85)
+    segmentarthin(2,6-c,20,k)
+    segmentar(2,6-c,20,k,70)
+    segmentar(3,6-c,20,k,80)  
+    segmentarthin(3,6-c,20,k)
+    segmentarthin(4,6-c,20,k)  
+    segmentar(3,6-c,20,k,70)
+    segmentar(5,6-c,20,k,70)    
+    segmentar(6,6-c,20,k,70)
+    segmentarforzado(k)
+    segmentarforzado(k)
 
-	captcha_entrada= driver.find_element_by_id("j_captcha")
-	captcha_entrada.send_keys(finalstr)
-	unidad_ejec= driver.find_element_by_id("secEjec")
-	unidad_ejec.send_keys("300001")
-	expediente= driver.find_element_by_id("expediente")
-	exp=i+100
-	expediente.send_keys(str(exp))
-	buscar=driver.find_element_by_xpath("//*[@id='command']/input").click()
-	time.sleep(3)
+    finalstr=''
+    for n in leer.listdir_recurd([],"C:/Users/Antonio/Desktop/CAPTCHAS/MEF_IA/segmentada/","C:/Users/Antonio/Desktop/CAPTCHAS/MEF_IA/segmentada/",[]): 
+        test=Image.open("segmentada/"+str(n))
+        test.save("a.jpg")
+        ancho,alto=test.size
+        mitad_ancho=int(ancho/2.0)
+        mitad_alto=int(alto/2.0)
+        pix=test.load()
+        im2=Image.new("L",(52,52))
+        im2_pix = im2.load() 
+        for i in range(26-mitad_ancho,26+mitad_ancho):
+            for j in range(26-mitad_alto,26+mitad_alto):
+                if pix[i+mitad_ancho-26,j+mitad_alto-26]>180:
+                    try:
+                        im2_pix[i,j]=255
+                    except:
+                        pass
+        im2.save("a.jpg")
+        im2.close()
+        imgTestNumbers = cv2.imread("a.jpg")
+        testflt= imgTestNumbers.reshape(1,np.prod(8112))   
+        testflt = np.float32(testflt)   
+        retval, npaResults, neigh_resp, dists = kNearest.findNearest(testflt, k = 1)
+        predicchar = str(chr(int(npaResults[0][0])))
+        finalstr= finalstr + predicchar
+        print(finalstr)
+
+    captcha_entrada= driver.find_element_by_id("j_captcha")
+    captcha_entrada.send_keys(finalstr)
+    unidad_ejec= driver.find_element_by_id("secEjec")
+    unidad_ejec.send_keys("300001")
+    expediente= driver.find_element_by_id("expediente")
+    exp=i+100
+    expediente.send_keys(str(exp))
+    buscar=driver.find_element_by_xpath("//*[@id='command']/input").click()
+    time.sleep(3)
 
 #leer data
-	año= driver.find_element_by_id("anoEje")
-	dato_año= año.get_attribute("value")
-	entidadid = driver.find_element_by_id("secEjec")
-	id_entidad= entidadid.get_attribute("value")
-	entidadnom = driver.find_element_by_id("secEjecNombre")
-	nom_entidad= entidadnom.get_attribute("value")
-	expedid = driver.find_element_by_id("expediente")
-	id_expediente= expedid.get_attribute("value")
-	t_ope= driver.find_element_by_id("tipoOperacion")
-	tipo_ope= t_ope.get_attribute("value")
-	nom_ope= driver.find_element_by_id("tipoOperacionNombre")
-	nombre_ope= nom_ope.get_attribute("value")
-	t_modcom= driver.find_element_by_id("modalidadCompra")
-	tipo_modo_compra= t_modcom.get_attribute("value")
-	nom_modcom= driver.find_element_by_id("modalidadCompraNombre")
-	nombre_modcom= nom_modcom.get_attribute("value")
-	t_prc_sel= driver.find_element_by_id("tipoProceso")
-	tipo_prc_sel= t_prc_sel.get_attribute("value")
-	nom_prc_sel= driver.find_element_by_id("tipoProcesoNombre")
-	nombre_prc_sel= nom_prc_sel.get_attribute("value")
-	tablaexpedientes = driver.find_elements_by_tag_name("td")
-	datostabla=[]
+    try:
+        entidadnom = driver.find_element_by_id("secEjecNombre")
 
-	for i in range(len(tablaexpedientes)//14):
-		regexpediente = ()
-		regexpediente += (dato_año,)
-		regexpediente += (id_entidad,)
-		regexpediente += (id_expediente,)
-		regexpediente += (i+1,)
-		regexpediente += (tablaexpedientes[i*14+0].text,)
-		regexpediente += (tablaexpedientes[i*14+1].text,)
-		regexpediente += (tablaexpedientes[i*14+2].text,)
-		regexpediente += (tablaexpedientes[i*14+3].text,)
-		regexpediente += (tablaexpedientes[i*14+4].text,)
-		regexpediente += (tablaexpedientes[i*14+5].text,)
-		regexpediente += (tablaexpedientes[i*14+6].text,)
-		regexpediente += (tablaexpedientes[i*14+7].text,)
-		regexpediente += (tablaexpedientes[i*14+8].text,)
-		regexpediente += (tablaexpedientes[i*14+9].text,)
-		regexpediente += (tablaexpedientes[i*14+10].text,)
-		regexpediente += (tablaexpedientes[i*14+11].text,)
-		regexpediente += (tablaexpedientes[i*14+12].text,)
-		datostabla.append(regexpediente)	
 
-	#guardar data 
-	EXP_arreglo =  [( id_entidad, dato_año, id_expediente , nom_entidad, tipo_ope, nombre_ope,tipo_modo_compra , nombre_modcom , tipo_prc_sel, nombre_prc_sel)]
-	c.executemany('INSERT INTO EXPEDIENTE_ADMIN VALUES (?,?,?,?,?,?,?,?,?,?)', EXP_arreglo)
-	c.executemany('INSERT INTO DATOS_EXPEDIENTE VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', datostabla)
+        año= driver.find_element_by_id("anoEje")
+        dato_año= año.get_attribute("value")
+        entidadid = driver.find_element_by_id("secEjec")
+        id_entidad= entidadid.get_attribute("value")
+        
+        nom_entidad= entidadnom.get_attribute("value")
+        expedid = driver.find_element_by_id("expediente")
+        id_expediente= expedid.get_attribute("value")
+        t_ope= driver.find_element_by_id("tipoOperacion")
+        tipo_ope= t_ope.get_attribute("value")
+        nom_ope= driver.find_element_by_id("tipoOperacionNombre")
+        nombre_ope= nom_ope.get_attribute("value")
+        t_modcom= driver.find_element_by_id("modalidadCompra")
+        tipo_modo_compra= t_modcom.get_attribute("value")
+        nom_modcom= driver.find_element_by_id("modalidadCompraNombre")
+        nombre_modcom= nom_modcom.get_attribute("value")
+        t_prc_sel= driver.find_element_by_id("tipoProceso")
+        tipo_prc_sel= t_prc_sel.get_attribute("value")
+        nom_prc_sel= driver.find_element_by_id("tipoProcesoNombre")
+        nombre_prc_sel= nom_prc_sel.get_attribute("value")
+        tablaexpedientes = driver.find_elements_by_tag_name("td")
+        datostabla=[]
 
-	driver.back()
+        for i in range(len(tablaexpedientes)//14):
+            regexpediente = ()
+            regexpediente += (dato_año,)
+            regexpediente += (id_entidad,)
+            regexpediente += (id_expediente,)
+            regexpediente += (i+1,)
+            regexpediente += (tablaexpedientes[i*14+0].text,)
+            regexpediente += (tablaexpedientes[i*14+1].text,)
+            regexpediente += (tablaexpedientes[i*14+2].text,)
+            regexpediente += (tablaexpedientes[i*14+3].text,)
+            regexpediente += (tablaexpedientes[i*14+4].text,)
+            regexpediente += (tablaexpedientes[i*14+5].text,)
+            regexpediente += (tablaexpedientes[i*14+6].text,)
+            regexpediente += (tablaexpedientes[i*14+7].text,)
+            regexpediente += (tablaexpedientes[i*14+8].text,)
+            regexpediente += (tablaexpedientes[i*14+9].text,)
+            regexpediente += (tablaexpedientes[i*14+10].text,)
+            regexpediente += (tablaexpedientes[i*14+11].text,)
+            regexpediente += (tablaexpedientes[i*14+12].text,)
+            datostabla.append(regexpediente)    
 
-#Revision de tablas
-c.execute('SELECT * FROM EXPEDIENTE_ADMIN')
-print("Tabla EXPEDIENTE_ADMIN")
-print( c.fetchall())
+        
+        #guardar data 
+        EXP_arreglo =  [( id_entidad, dato_año, id_expediente , nom_entidad, tipo_ope, nombre_ope,tipo_modo_compra , nombre_modcom , tipo_prc_sel, nombre_prc_sel)]
+        c.executemany('INSERT INTO EXPEDIENTE_ADMIN VALUES (?,?,?,?,?,?,?,?,?,?)', EXP_arreglo)
+        c.executemany('INSERT INTO DATOS_EXPEDIENTE VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', datostabla)
 
-c.execute('SELECT * FROM DATOS_EXPEDIENTE')
-print(" Tabla DATOS_EXPEDIENTE ")
-print( c.fetchall())
+        driver.back()
+    except :
+        print("Error al ingresar la data")
+        pass
+      
+    for f in listdir("segmentada/"):   
+        try:    
+            os.remove("segmentada/"+f) 
+        except:
+            pass
+
+if (i == total_consultas):
+    #Revision de tablas
+    c.execute('SELECT * FROM EXPEDIENTE_ADMIN')
+    print("Tabla EXPEDIENTE_ADMIN")
+    print( c.fetchall())
+
+    c.execute('SELECT * FROM DATOS_EXPEDIENTE')
+    print(" Tabla DATOS_EXPEDIENTE ")
+    print( c.fetchall())
+

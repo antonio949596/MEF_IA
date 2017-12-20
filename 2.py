@@ -41,8 +41,8 @@ def total_arch(folder,k):
     for f in listdir(folder):   
         if f[2:11]==k:
             n=n+1
-
     return n
+
 
 
 
