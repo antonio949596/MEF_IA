@@ -498,31 +498,31 @@ for i in range(total_consultas):
     segmentarforzado(k)
 
     finalstr=''
-    for n in leer.listdir_recurd([],"C:/Users/Antonio/Desktop/CAPTCHAS/MEF_IA/segmentada/","C:/Users/Antonio/Desktop/CAPTCHAS/MEF_IA/segmentada/",[]): 
-        test=Image.open("segmentada/"+str(n))
-        test.save("a.jpg")
-        ancho,alto=test.size
-        mitad_ancho=int(ancho/2.0)
-        mitad_alto=int(alto/2.0)
-        pix=test.load()
-        im2=Image.new("L",(52,52))
-        im2_pix = im2.load() 
-        for i in range(26-mitad_ancho,26+mitad_ancho):
-            for j in range(26-mitad_alto,26+mitad_alto):
-                if pix[i+mitad_ancho-26,j+mitad_alto-26]>180:
-                    try:
-                        im2_pix[i,j]=255
-                    except:
-                        pass
-        im2.save("a.jpg")
-        im2.close()
-        imgTestNumbers = cv2.imread("a.jpg")
-        testflt= imgTestNumbers.reshape(1,np.prod(8112))   
-        testflt = np.float32(testflt)   
-        retval, npaResults, neigh_resp, dists = kNearest.findNearest(testflt, k = 1)
-        predicchar = str(chr(int(npaResults[0][0])))
-        finalstr= finalstr + predicchar
-        print(finalstr)
+        for n in leer.listdir_recurd([],"C:/Users/Antonio/Desktop/CAPTCHAS/MEF_IA/segmentada/","C:/Users/Antonio/Desktop/CAPTCHAS/MEF_IA/segmentada/",[]): 
+            test=Image.open("segmentada/"+str(n))
+            test.save("a.jpg")
+            ancho,alto=test.size
+            mitad_ancho=int(ancho/2.0)
+            mitad_alto=int(alto/2.0)
+            pix=test.load()
+            im2=Image.new("L",(52,52))
+            im2_pix = im2.load() 
+            for i in range(26-mitad_ancho,26+mitad_ancho):
+                for j in range(26-mitad_alto,26+mitad_alto):
+                    if pix[i+mitad_ancho-26,j+mitad_alto-26]>180:
+                        try:
+                            im2_pix[i,j]=255
+                        except:
+                            pass
+            im2.save("a.jpg")
+            im2.close()
+            imgTestNumbers = cv2.imread("a.jpg")
+            testflt= imgTestNumbers.reshape(1,np.prod(8112))   
+            testflt = np.float32(testflt)   
+            retval, npaResults, neigh_resp, dists = kNearest.findNearest(testflt, k = 1)
+            predicchar = str(chr(int(npaResults[0][0])))
+            finalstr= finalstr + predicchar
+            print(finalstr)
 
     captcha_entrada= driver.find_element_by_id("j_captcha")
     captcha_entrada.send_keys(finalstr)
@@ -592,10 +592,11 @@ for i in range(total_consultas):
         driver.back()
     except :
         print("Error al ingresar la data")
+        driver.refresh()
         pass
       
     for f in listdir("segmentada/"):   
-        try:    
+        try:   
             os.remove("segmentada/"+f) 
         except:
             pass
